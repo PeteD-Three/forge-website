@@ -133,14 +133,35 @@
       var dl = $('[data-summary]', step);
       dl.innerHTML = '';
       steps.slice(0, -1).forEach(function (s) {
-        var parts = chosen(s).map(function (i) { var t = i.closest('.tile'); return (t.querySelector('strong') || t.querySelector('span')).textContent.trim(); });
-        $$('.field input:not([type=checkbox]):not([type=radio]), .field textarea', s).forEach(function (f) {
-          if (f.closest('.hp') || !f.value.trim()) return;
-          parts.push(f.value.trim());
+        // Walk tile groups and text fields in page order. A step that asks several
+        // things labels each answer with its question.
+        var parts = [];
+        var items = $$('.tiles, .field', s);
+        items.forEach(function (el) {
+          var val = '', label = '';
+          if (el.classList.contains('tiles')) {
+            val = $$('input:checked', el).map(function (i) { var t = i.closest('.tile'); return (t.querySelector('strong') || t.querySelector('span')).textContent.trim(); }).join(', ');
+            var h = el.previousElementSibling;
+            if (h && h.classList.contains('sub')) label = h.textContent.replace(/\(optional\)/i, '').trim();
+          } else {
+            if (el.classList.contains('check')) return;
+            var f = $('input:not([type=checkbox]):not([type=radio]), textarea', el);
+            if (!f || f.closest('.hp') || !f.value.trim()) return;
+            val = f.value.trim();
+            var l = $('label', el);
+            if (l) label = l.textContent.replace(/\(optional\)|\*/gi, '').trim();
+          }
+          if (val) parts.push({ label: label, val: val });
         });
         var row = document.createElement('div');
         var dt = document.createElement('dt'); dt.textContent = s.getAttribute('data-title');
-        var dd = document.createElement('dd'); dd.textContent = parts.length ? parts.join(', ') : 'Not shared';
+        var dd = document.createElement('dd');
+        if (!parts.length) dd.textContent = 'Not shared';
+        parts.forEach(function (p) {
+          var line = document.createElement('div');
+          line.textContent = items.length > 1 && p.label ? p.label.replace(/[?:]$/, '') + ': ' + p.val : p.val;
+          dd.appendChild(line);
+        });
         row.appendChild(dt); row.appendChild(dd); dl.appendChild(row);
       });
     }
